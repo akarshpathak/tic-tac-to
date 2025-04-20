@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background: linear-gradient(to right, #ff7e5f, #feb47b);
+            color: white;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 120px);
+            grid-template-rows: repeat(3, 120px);
+            gap: 10px;
+            margin: 20px auto;
+            width: 390px;
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.4);
+        }
+        .cell {
+            width: 120px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3em;
+            font-weight: bold;
+            border-radius: 10px;
+            background: radial-gradient(circle, #ffffff, #d1d1d1);
+            box-shadow: inset 0px 0px 10px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .cell.taken {
+            cursor: not-allowed;
+        }
+        .cell:hover:not(.taken) {
+            background: radial-gradient(circle, #f1f1f1, #e0e0e0);
+            transform: scale(1.1);
+        }
+        .cell.x {
+            color: #ff3b3b;
+            text-shadow: 2px 2px 5px rgba(255, 0, 0, 0.5);
+        }
+        .cell.o {
+            color: #0072ff;
+            text-shadow: 2px 2px 5px rgba(0, 0, 255, 0.5);
+        }
+        #status {
+            font-size: 2em;
+            margin-top: 20px;
+            font-weight: bold;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        button {
+            margin-top: 20px;
+            padding: 12px 25px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            background: linear-gradient(to right, #00c6ff, #0072ff);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            transition: background 0.3s ease, transform 0.2s;
+        }
+        button:hover {
+            background: linear-gradient(to right, #0072ff, #00c6ff);
+            transform: scale(1.1);
+        }
+        .congrats {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(to right, #00ff99, #00ccff);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.6);
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            animation: popUp 0.5s ease-in-out;
+        }
+        @keyframes popUp {
+            from { transform: translate(-50%, -60%) scale(0.8); opacity: 0; }
+            to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        .mode-toggle {
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tic Tac Toe</h1>
+    <div class="mode-toggle">
+        <label><input type="radio" name="mode" value="bot" checked> Vs Bot</label>
+        <label><input type="radio" name="mode" value="two"> Two Player</label>
+    </div>
+    <div class="board" id="board"></div>
+    <div id="status">Player X's turn</div>
+    <button onclick="resetGame()">Restart Game</button>
+    <div class="congrats" id="congrats">
+        <h2 id="winner-message"></h2>
+        <button onclick="closeCongrats()">Play Again</button>
+    </div>
+    <script>
+        const board = document.getElementById("board");
+        let currentPlayer = "X";
+        let cells = Array(9).fill(null);
+        let gameMode = "bot";
+
+        document.querySelectorAll('input[name="mode"]').forEach(radio => {
+            radio.addEventListener('change', e => {
+                gameMode = e.target.value;
+                resetGame();
+            });
+        });
+
+        function createBoard() {
+            board.innerHTML = "";
+            cells.forEach((_, index) => {
+                const cell = document.createElement("div");
+                cell.classList.add("cell");
+                cell.addEventListener("click", () => makeMove(index));
+                board.appendChild(cell);
+            });
+        }
+
+        function makeMove(index) {
+            if (cells[index] || checkWinner()) return;
+
+            cells[index] = currentPlayer;
+            board.children[index].textContent = currentPlayer;
+            board.children[index].classList.add("taken", currentPlayer.toLowerCase());
+
+            if (checkWinner()) {
+                document.getElementById("winner-message").textContent = `🎉 Congratulations! Player ${currentPlayer} wins! 🎉`;
+                document.getElementById("congrats").style.display = "block";
+                return;
+            }
+
+            if (!cells.includes(null)) {
+                document.getElementById("winner-message").textContent = "🤝 It's a draw!";
+                document.getElementById("congrats").style.display = "block";
+                return;
+            }
+
+            currentPlayer = currentPlayer === "X" ? "O" : "X";
+            document.getElementById("status").textContent = `Player ${currentPlayer}'s turn`;
+
+            if (gameMode === "bot" && currentPlayer === "O") {
+                setTimeout(botMove, 300);
+            }
+        }
+
+        function botMove() {
+            const bestMove = getBestMove();
+            makeMove(bestMove);
+        }
+
+        function getBestMove() {
+            let bestScore = -Infinity;
+            let move;
+            for (let i = 0; i < 9; i++) {
+                if (!cells[i]) {
+                    cells[i] = "O";
+                    let score = minimax(cells, 0, false);
+                    cells[i] = null;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        move = i;
+                    }
+                }
+            }
+            return move;
+        }
+
+        function minimax(boardState, depth, isMaximizing) {
+            const winner = getWinner(boardState);
+            if (winner === "O") return 10 - depth;
+            if (winner === "X") return depth - 10;
+            if (!boardState.includes(null)) return 0;
+
+            if (isMaximizing) {
+                let best = -Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (!boardState[i]) {
+                        boardState[i] = "O";
+                        best = Math.max(best, minimax(boardState, depth + 1, false));
+                        boardState[i] = null;
+                    }
+                }
+                return best;
+            } else {
+                let best = Infinity;
+                for (let i = 0; i < 9; i++) {
+                    if (!boardState[i]) {
+                        boardState[i] = "X";
+                        best = Math.min(best, minimax(boardState, depth + 1, true));
+                        boardState[i] = null;
+                    }
+                }
+                return best;
+            }
+        }
+
+        function getWinner(cells) {
+            const winPatterns = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+            for (let [a, b, c] of winPatterns) {
+                if (cells[a] && cells[a] === cells[b] && cells[a] === cells[c]) {
+                    return cells[a];
+                }
+            }
+            return null;
+        }
+
+        function checkWinner() {
+            return getWinner(cells);
+        }
+
+        function resetGame() {
+            cells = Array(9).fill(null);
+            currentPlayer = "X";
+            document.getElementById("status").textContent = "Player X's turn";
+            document.getElementById("congrats").style.display = "none";
+            createBoard();
+        }
+
+        function closeCongrats() {
+            document.getElementById("congrats").style.display = "none";
+            resetGame();
+        }
+
+        createBoard();
+    </script>
+</body>
+</html>
